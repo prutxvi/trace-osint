@@ -67,8 +67,11 @@ def confidence_style(level: str) -> str:
     return styles.get(level, "dim white")
 
 
-def phase_label(phase: str) -> str:
-    return PHASE_LABELS.get(phase, f"[dim]{phase.upper()}[/dim]")
+def phase_label(phase: str, detail: str = "") -> str:
+    label = PHASE_LABELS.get(phase, f"[dim]{phase.upper()}[/dim]")
+    if detail:
+        return f"{label} [dim]{detail}[/dim]"
+    return label
 
 
 def status_icon(status: str) -> str:
