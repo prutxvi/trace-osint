@@ -1,0 +1,76 @@
+{
+  "$schema": "https://opencode.ai/schema.json",
+  "name": "trace-osint",
+  "version": "1.0.0",
+  "description": "Premium terminal-native multi-agent OSINT copilot for lawful public-source intelligence workflows",
+  "providers": {
+    "groq": {
+      "name": "Groq",
+      "type": "groq",
+      "env": "GROQ_API_KEY",
+      "models": {
+        "llama-3.3-70b-versatile": {
+          "name": "Llama 3.3 70B Versatile",
+          "maxTokens": 128000,
+          "contextWindow": 128000
+        }
+      }
+    },
+    "openrouter": {
+      "name": "OpenRouter",
+      "type": "openrouter",
+      "env": "OPENROUTER_API_KEY",
+      "models": {
+        "anthropic/claude-sonnet-4": {
+          "name": "Claude Sonnet 4",
+          "maxTokens": 200000,
+          "contextWindow": 200000
+        }
+      }
+    }
+  },
+  "agents": {
+    "planner": {
+      "file": ".opencode/agents/planner.md",
+      "description": "Creates step-by-step investigation plans from clues"
+    },
+    "collector": {
+      "file": ".opencode/agents/collector.md",
+      "description": "Retrieves data from approved public sources"
+    },
+    "resolver": {
+      "file": ".opencode/agents/resolver.md",
+      "description": "Normalizes entities and merges duplicates"
+    },
+    "analyst": {
+      "file": ".opencode/agents/analyst.md",
+      "description": "Interprets results and identifies gaps"
+    },
+    "reporter": {
+      "file": ".opencode/agents/reporter.md",
+      "description": "Generates final markdown and JSON reports"
+    },
+    "auditor": {
+      "file": ".opencode/agents/auditor.md",
+      "description": "Records actions, enforces trace IDs, logs events"
+    }
+  },
+  "permissions": {
+    "allow": [
+      "websearch",
+      "webfetch",
+      "read",
+      "write",
+      "edit",
+      "bash"
+    ],
+    "deny": [
+      "exec:rm -rf",
+      "exec:sudo",
+      "exec:ssh",
+      "exec:curl -X POST",
+      "exec:curl -X PUT",
+      "exec:curl -X DELETE"
+    ]
+  }
+}
