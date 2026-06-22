@@ -4,6 +4,7 @@ Discovers and loads plugins from the plugins/ directory.
 Each plugin is a Python module with a class that extends BasePlugin.
 """
 
+import sys
 import importlib
 import pkgutil
 from pathlib import Path
@@ -13,6 +14,9 @@ from src.plugins.base import BasePlugin
 from src.config import PROJECT_ROOT
 
 PLUGINS_DIR = PROJECT_ROOT / "plugins"
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def discover_plugins() -> list[BasePlugin]:

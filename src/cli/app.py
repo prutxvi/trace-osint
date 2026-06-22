@@ -253,11 +253,11 @@ def list_cases():
 
     for c in cases:
         table.add_row(
-            c.case_id,
-            c.name[:30],
-            ", ".join(c.clues[:2]),
-            c.status,
-            c.created_at[:10],
+            c["case_id"],
+            c["name"][:30],
+            ", ".join(c.get("clues", [])[:2]),
+            c["status"],
+            c["created_at"][:10] if c.get("created_at") else "",
         )
     console.print(table)
 

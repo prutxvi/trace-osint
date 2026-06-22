@@ -32,7 +32,7 @@ class PolicyMode(str, Enum):
     BLOCKED = "BLOCKED"
 
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CASES_DIR = PROJECT_ROOT / "cases"
 OUTPUT_DIR = PROJECT_ROOT / "output"
 SRC_DIR = PROJECT_ROOT / "src"
