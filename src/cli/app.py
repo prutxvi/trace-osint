@@ -493,6 +493,11 @@ def interactive():
                 ]:
                     clues.extend(re.findall(pattern, text))
                 if not clues:
+                    stripped = text.strip()
+                    if re.match(r'^[a-zA-Z0-9_\-]{3,39}$', stripped):
+                        return [stripped]
+                    if re.match(r'^[a-zA-Z0-9]([a-zA-Z0-9-]*\.)+[a-zA-Z]{2,}$', stripped):
+                        return [stripped]
                     name_candidate = re.sub(r'[^A-Za-z\s]', ' ', text).strip()
                     parts = [p for p in name_candidate.split() if p]
                     if 2 <= len(parts) <= 4 and all(len(p) >= 2 for p in parts):
