@@ -18,6 +18,15 @@ from src.sources.normalize import (
 from src.scoring.confidence import merge_confidences, entity_confidence_from_findings
 from src.parsers.text_extract import extract_all_entities
 
+from src.sources.username_check import check_username_bulk
+from src.sources.email_intel import get_email_intelligence
+from src.sources.domain_intel import get_domain_intelligence
+from src.sources.wayback_intel import get_wayback_intelligence
+from src.sources.github_intel import get_github_intelligence
+from src.sources.ip_intel import get_ip_intelligence
+from src.sources.india_intel import get_india_intelligence
+from src.sources.correlation import correlate_entities, build_correlation_summary
+
 
 class WorkflowEngine:
     """Orchestrates the multi-phase investigation workflow."""
@@ -84,7 +93,7 @@ class WorkflowEngine:
         self._finalize_audit()
 
     def _generate_plan(self) -> InvestigationPlan:
-        """Generate an investigation plan from clues."""
+        """Generate investigation plan from clues."""
         steps = []
         step_id = 0
 
@@ -94,61 +103,105 @@ class WorkflowEngine:
             if entity_type == "email":
                 step_id += 1
                 steps.append(PlanStep(
-                    step_id=step_id,
-                    action="search_email",
-                    description=f"Search for email: {clue}",
-                    source="public_search",
-                    risk_level="low",
+                    step_id=step_id, action="email_intel",
+                    description=f"Full email intelligence: {clue}",
+                    source="multi_source", risk_level="low",
                 ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="search_email",
+                    description=f"Search for email: {clue}",
+                    source="public_search", risk_level="low",
+                ))
+
             elif entity_type == "username":
                 step_id += 1
                 steps.append(PlanStep(
-                    step_id=step_id,
-                    action="search_username",
-                    description=f"Search for username: {clue}",
-                    source="public_search",
-                    risk_level="low",
+                    step_id=step_id, action="username_check",
+                    description=f"Check username across 400+ platforms: {clue}",
+                    source="multi_platform", risk_level="low",
                 ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="github_intel",
+                    description=f"GitHub intelligence: {clue}",
+                    source="github_api", risk_level="low",
+                ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="search_username",
+                    description=f"Search for username: {clue}",
+                    source="public_search", risk_level="low",
+                ))
+
             elif entity_type == "domain":
                 step_id += 1
                 steps.append(PlanStep(
-                    step_id=step_id,
-                    action="search_domain",
-                    description=f"Search for domain: {clue}",
-                    source="public_search",
-                    risk_level="low",
+                    step_id=step_id, action="domain_intel",
+                    description=f"Full domain intelligence: {clue}",
+                    source="multi_source", risk_level="low",
                 ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="search_domain",
+                    description=f"Search for domain: {clue}",
+                    source="public_search", risk_level="low",
+                ))
+
             elif entity_type == "url":
                 step_id += 1
                 steps.append(PlanStep(
-                    step_id=step_id,
-                    action="fetch_url",
+                    step_id=step_id, action="fetch_url",
                     description=f"Fetch URL content: {clue}",
-                    source="public_webpage",
-                    risk_level="medium",
+                    source="public_webpage", risk_level="medium",
                 ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="wayback_intel",
+                    description=f"Wayback Machine history: {clue}",
+                    source="archive_org", risk_level="low",
+                ))
+
+            elif entity_type == "phone":
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="phone_intel",
+                    description=f"Phone intelligence: {clue}",
+                    source="phone_lookup", risk_level="low",
+                ))
+
+            elif entity_type == "ip_address":
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="ip_intel",
+                    description=f"IP geolocation: {clue}",
+                    source="ip_api", risk_level="low",
+                ))
+
             else:
                 step_id += 1
                 steps.append(PlanStep(
-                    step_id=step_id,
-                    action="search_person",
+                    step_id=step_id, action="search_person",
                     description=f"Search for person: {clue}",
-                    source="public_search",
-                    risk_level="low",
+                    source="public_search", risk_level="low",
+                ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="india_intel",
+                    description=f"Indian public records: {clue}",
+                    source="india_kanoon", risk_level="low",
                 ))
 
         step_id += 1
         steps.append(PlanStep(
-            step_id=step_id,
-            action="cross_reference",
-            description="Cross-reference all collected findings",
-            source="analysis",
-            risk_level="low",
+            step_id=step_id, action="correlate",
+            description="Cross-correlate all findings and resolve entities",
+            source="analysis", risk_level="low",
         ))
 
         return InvestigationPlan(
             case_id=self.case.case_id,
-            objective=f"Resolve {len(self.case.clues)} clue(s) to public-source intelligence",
+            objective=f"Resolve {len(self.case.clues)} clue(s) to comprehensive intelligence",
             steps=steps,
         )
 
@@ -164,149 +217,102 @@ class WorkflowEngine:
             self.audit.log_tool(self.case.phase, "collector", step.action, step.description)
 
             try:
-                if step.action == "search_email":
-                    findings = self._collect_email(step)
-                elif step.action == "search_username":
-                    findings = self._collect_username(step)
-                elif step.action == "search_domain":
-                    findings = self._collect_domain(step)
-                elif step.action == "fetch_url":
-                    findings = self._collect_url(step)
-                elif step.action == "search_person":
-                    findings = self._collect_person(step)
-                elif step.action == "cross_reference":
-                    findings = self._cross_reference()
-                else:
-                    findings = []
-
+                findings = self._execute_step(step)
                 self._collected_findings.extend(findings)
                 step.status = "complete"
                 step.result = f"Collected {len(findings)} finding(s)"
                 self._emit_tool(step.action, "ok", f"{len(findings)} finding(s)")
                 self._emit_event(f"Step {step.step_id}: {step.action} -> {len(findings)} results")
-
             except Exception as e:
                 step.status = "error"
                 step.result = str(e)
                 self.audit.log_error(self.case.phase, "collector", step.action, str(e))
                 self._emit_tool(step.action, "error", str(e))
 
-            time.sleep(0.3)
+            time.sleep(0.2)
 
         self.case.findings = self._collected_findings
 
-    def _collect_email(self, step: PlanStep) -> list[Finding]:
-        clue = step.description.split(": ")[-1]
-        return search_email(clue)
+    def _execute_step(self, step: PlanStep) -> list[Finding]:
+        """Execute a single investigation step."""
+        clue = step.description.split(": ", 1)[-1] if ": " in step.description else ""
 
-    def _collect_username(self, step: PlanStep) -> list[Finding]:
-        clue = step.description.split(": ")[-1]
-        return search_username(clue)
+        if step.action == "email_intel":
+            return get_email_intelligence(clue)
+        elif step.action == "username_check":
+            return check_username_bulk(clue)
+        elif step.action == "github_intel":
+            return get_github_intelligence(clue)
+        elif step.action == "domain_intel":
+            return get_domain_intelligence(clue)
+        elif step.action == "wayback_intel":
+            return get_wayback_intelligence(clue)
+        elif step.action == "ip_intel":
+            return get_ip_intelligence(clue)
+        elif step.action == "phone_intel":
+            return self._phone_intel(clue)
+        elif step.action == "india_intel":
+            return get_india_intelligence(clue)
+        elif step.action == "search_email":
+            return search_email(clue)
+        elif step.action == "search_username":
+            return search_username(clue)
+        elif step.action == "search_domain":
+            return search_domain(clue)
+        elif step.action == "search_person":
+            return public_search(f'"{clue}"', entity_type=EntityType.PERSON)
+        elif step.action == "fetch_url":
+            finding = fetch_url_as_finding(clue)
+            return [finding] if finding else []
+        elif step.action == "correlate":
+            return []
+        return []
 
-    def _collect_domain(self, step: PlanStep) -> list[Finding]:
-        clue = step.description.split(": ")[-1]
-        return search_domain(clue)
+    def _phone_intel(self, phone: str) -> list[Finding]:
+        """Phone intelligence gathering."""
+        from src.sources.india_intel import indian_phone_lookup
+        from src.sources.search import public_search
 
-    def _collect_url(self, step: PlanStep) -> list[Finding]:
-        url = step.description.split(": ")[-1]
-        finding = fetch_url_as_finding(url)
-        return [finding] if finding else []
+        findings = []
+        lookup = indian_phone_lookup(phone)
+        if lookup.get("valid"):
+            finding = Finding(
+                entity_type=EntityType.PHONE,
+                entity_value=phone,
+                label=f"Phone Lookup: {phone}",
+                summary=f"Carrier: {lookup['carrier']} | Country: {lookup['country']} | Line: {lookup['line_type']}",
+                details=lookup,
+                source=Source(
+                    url=f"tel:{phone}",
+                    title="Phone Intelligence",
+                    source_type="public_api",
+                    reliability=0.7,
+                ),
+                confidence=Confidence(score=0.7, reasoning="Phone carrier detection"),
+            )
+            finding.confidence.compute_level()
+            findings.append(finding)
 
-    def _collect_person(self, step: PlanStep) -> list[Finding]:
-        clue = step.description.split(": ")[-1]
-        return public_search(f'"{clue}"', entity_type=EntityType.PERSON)
+        search_results = public_search(f'"{phone}"', entity_type=EntityType.PHONE)
+        findings.extend(search_results)
 
-    def _cross_reference(self) -> list[Finding]:
-        """Cross-reference collected findings for additional signals."""
-        additional = []
-        for finding in self._collected_findings[:5]:
-            if finding.summary:
-                entities = extract_all_entities(finding.summary)
-                for email in entities.get("emails", [])[:2]:
-                    extra = search_email(email)
-                    additional.extend(extra)
-                for url in entities.get("urls", [])[:2]:
-                    extra_f = fetch_url_as_finding(url)
-                    if extra_f:
-                        additional.append(extra_f)
-        return additional
+        return findings
 
     def _resolve_entities(self):
-        """Normalize and deduplicate entities from findings."""
-        entity_map: dict[str, Entity] = {}
-
-        for finding in self.case.findings:
-            entity_type = finding.entity_type
-            value = self._extract_clean_value(finding)
-
-            canonical = self._canonicalize(value, entity_type)
-
-            matched = False
-            for eid, entity in entity_map.items():
-                if entity.type == entity_type and are_likely_same_entity(
-                    entity.value, canonical, entity_type.value
-                ):
-                    if value not in entity.aliases:
-                        entity.aliases.append(value)
-                    entity.finding_ids.append(finding.id)
-                    matched = True
-                    break
-
-            if not matched:
-                entity = Entity(
-                    type=entity_type,
-                    value=canonical,
-                    aliases=[value] if value != canonical else [],
-                    finding_ids=[finding.id],
-                )
-                entity_map[entity.id] = entity
-
-        for entity in entity_map.values():
-            contributing = [
-                f for f in self.case.findings
-                if f.id in entity.finding_ids
-            ]
-            entity.confidence = entity_confidence_from_findings(contributing)
-
-        self.case.entities = list(entity_map.values())
-        self._resolved_entities = self.case.entities
+        """Resolve and deduplicate entities from findings."""
+        self._resolved_entities = correlate_entities(self.case.findings)
+        self.case.entities = self._resolved_entities
         self.audit.log(self.case.phase, "resolver", "entities_resolved",
                       f"Resolved {len(self.case.entities)} entities")
 
-    def _extract_clean_value(self, finding) -> str:
-        """Extract clean entity value from a finding, using details when available."""
-        details = finding.details
-        if details.get("url"):
-            from src.sources.normalize import normalize_domain, normalize_url
-            import re
-            url = details["url"]
-            domain_match = re.search(r"https?://([^/]+)", url)
-            if domain_match:
-                return normalize_domain(domain_match.group(1))
-            return normalize_url(url)
-        if details.get("title"):
-            return details["title"][:100]
-        return finding.entity_value
-
-    def _canonicalize(self, value: str, entity_type: EntityType) -> str:
-        """Canonicalize an entity value based on type."""
-        if entity_type == EntityType.EMAIL:
-            return normalize_email(value)
-        elif entity_type == EntityType.USERNAME:
-            return normalize_username(value)
-        elif entity_type == EntityType.URL:
-            return normalize_url(value)
-        elif entity_type == EntityType.DOMAIN:
-            return normalize_domain(value)
-        return value
-
     def _analyze(self):
-        """Perform analysis on resolved findings."""
+        """Analyze findings."""
         self.audit.log(self.case.phase, "analyst", "analysis_started",
                       f"Analyzing {len(self.case.findings)} findings")
 
+        summary = build_correlation_summary(self.case.entities, self.case.findings)
         high_conf = [f for f in self.case.findings if f.confidence.level == "high"]
-        self._emit_event(f"Analysis: {len(high_conf)} high-confidence findings")
+        self._emit_event(f"Analysis: {len(high_conf)} high-confidence findings, {summary['total_entities']} entities")
 
         self.audit.log(self.case.phase, "analyst", "analysis_complete",
                       f"Completed analysis")
