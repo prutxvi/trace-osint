@@ -20,6 +20,7 @@ from src.case_store import save_case, load_case, list_cases, save_report, get_ca
 from src.workflow import WorkflowEngine
 from src.reporting.markdown_report import generate_markdown_report
 from src.reporting.json_report import generate_json_report
+from src.reporting.pdf_report import save_pdf_report
 from src.theme import TRACE_THEME, phase_label
 from src.sources.normalize import detect_entity_type
 
@@ -217,15 +218,28 @@ def run_investigation(case: Case):
     )
     audit_path = save_report(case.case_id, "audit_log.txt", audit_log)
 
+    from src.config import CASES_DIR
+    pdf_path = CASES_DIR / case.case_id / "reports" / "report.pdf"
+    pdf_path.parent.mkdir(exist_ok=True)
+    try:
+        save_pdf_report(case, str(pdf_path))
+    except Exception as e:
+        pdf_path = None
+
     save_case(case)
 
+    report_lines = [
+        f"[bold green]Investigation Complete[/bold green]\n",
+        f"[dim]Reports:[/dim]",
+        f"  [green]+[/green] [bold]PDF:[/bold]     {pdf_path}" if pdf_path else f"  [red]![/red] PDF generation failed",
+        f"  [green]+[/green] [bold]Markdown:[/bold] {md_path}",
+        f"  [green]+[/green] [bold]JSON:[/bold]     {json_path}",
+        f"  [green]+[/green] [bold]Run Log:[/bold]  {log_path}",
+        f"  [green]+[/green] [bold]Audit:[/bold]    {audit_path}",
+    ]
+
     console.print(Panel(
-        f"[bold green]Investigation Complete[/bold green]\n\n"
-        f"[dim]Reports:[/dim]\n"
-        f"  [dim]Markdown: {md_path}[/dim]\n"
-        f"  [dim]JSON:     {json_path}[/dim]\n"
-        f"  [dim]Run Log:  {log_path}[/dim]\n"
-        f"  [dim]Audit:    {audit_path}[/dim]",
+        "\n".join(report_lines),
         border_style="green",
         title="[bold green]Done[/bold green]",
     ))
