@@ -26,6 +26,12 @@ from src.sources.github_intel import get_github_intelligence
 from src.sources.ip_intel import get_ip_intelligence
 from src.sources.india_intel import get_india_intelligence
 from src.sources.correlation import correlate_entities, build_correlation_summary
+from src.sources.shodan_intel import get_shodan_intelligence
+from src.sources.opencorporates_intel import get_opencorporates_intelligence
+from src.sources.wikidata_intel import get_wikidata_intelligence
+from src.sources.people_search import get_truepeoplesearch_intelligence
+from src.sources.breach_intel import get_breach_intelligence
+from src.sources.court_intel import get_court_intelligence
 
 
 class WorkflowEngine:
@@ -109,6 +115,18 @@ class WorkflowEngine:
                 ))
                 step_id += 1
                 steps.append(PlanStep(
+                    step_id=step_id, action="breach_check",
+                    description=f"Breach check: {clue}",
+                    source="breach_directory", risk_level="low",
+                ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="people_search",
+                    description=f"People search: {clue}",
+                    source="truepeoplesearch", risk_level="low",
+                ))
+                step_id += 1
+                steps.append(PlanStep(
                     step_id=step_id, action="search_email",
                     description=f"Search for email: {clue}",
                     source="public_search", risk_level="low",
@@ -129,6 +147,18 @@ class WorkflowEngine:
                 ))
                 step_id += 1
                 steps.append(PlanStep(
+                    step_id=step_id, action="wikidata_intel",
+                    description=f"Wikidata entity lookup: {clue}",
+                    source="wikidata", risk_level="low",
+                ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="people_search",
+                    description=f"People search: {clue}",
+                    source="truepeoplesearch", risk_level="low",
+                ))
+                step_id += 1
+                steps.append(PlanStep(
                     step_id=step_id, action="search_username",
                     description=f"Search for username: {clue}",
                     source="public_search", risk_level="low",
@@ -140,6 +170,18 @@ class WorkflowEngine:
                     step_id=step_id, action="domain_intel",
                     description=f"Full domain intelligence: {clue}",
                     source="multi_source", risk_level="low",
+                ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="shodan_domain",
+                    description=f"Shodan infrastructure scan: {clue}",
+                    source="shodan", risk_level="low",
+                ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="opencorporates",
+                    description=f"Company lookup: {clue}",
+                    source="opencorporates", risk_level="low",
                 ))
                 step_id += 1
                 steps.append(PlanStep(
@@ -169,8 +211,20 @@ class WorkflowEngine:
                     description=f"Phone intelligence: {clue}",
                     source="phone_lookup", risk_level="low",
                 ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="people_search",
+                    description=f"People search by phone: {clue}",
+                    source="truepeoplesearch", risk_level="low",
+                ))
 
             elif entity_type == "ip_address":
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="shodan_ip",
+                    description=f"Shodan IP scan: {clue}",
+                    source="shodan", risk_level="low",
+                ))
                 step_id += 1
                 steps.append(PlanStep(
                     step_id=step_id, action="ip_intel",
@@ -184,6 +238,30 @@ class WorkflowEngine:
                     step_id=step_id, action="search_person",
                     description=f"Search for person: {clue}",
                     source="public_search", risk_level="low",
+                ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="wikidata_intel",
+                    description=f"Wikidata lookup: {clue}",
+                    source="wikidata", risk_level="low",
+                ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="people_search",
+                    description=f"People search: {clue}",
+                    source="truepeoplesearch", risk_level="low",
+                ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="court_intel",
+                    description=f"Court records: {clue}",
+                    source="pacer", risk_level="low",
+                ))
+                step_id += 1
+                steps.append(PlanStep(
+                    step_id=step_id, action="opencorporates",
+                    description=f"Company lookup: {clue}",
+                    source="opencorporates", risk_level="low",
                 ))
                 step_id += 1
                 steps.append(PlanStep(
@@ -253,6 +331,20 @@ class WorkflowEngine:
             return self._phone_intel(clue)
         elif step.action == "india_intel":
             return get_india_intelligence(clue)
+        elif step.action == "shodan_ip":
+            return get_shodan_intelligence(clue, is_ip=True)
+        elif step.action == "shodan_domain":
+            return get_shodan_intelligence(clue, is_ip=False)
+        elif step.action == "opencorporates":
+            return get_opencorporates_intelligence(clue)
+        elif step.action == "wikidata_intel":
+            return get_wikidata_intelligence(clue)
+        elif step.action == "people_search":
+            return get_truepeoplesearch_intelligence(clue)
+        elif step.action == "breach_check":
+            return get_breach_intelligence(clue)
+        elif step.action == "court_intel":
+            return get_court_intelligence(clue)
         elif step.action == "search_email":
             return search_email(clue)
         elif step.action == "search_username":
