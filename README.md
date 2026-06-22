@@ -1,3 +1,6 @@
+<img width="1470" height="956" alt="Screenshot 2026-06-22 at 11 19 37 PM" src="https://github.com/user-attachments/assets/c375e0b8-7155-4398-bd6b-5564d0609138" />
+<img width="1470" height="956" alt="Screenshot 2026-06-22 at 11 19 27 PM" src="https://github.com/user-attachments/assets/bf9529d5-ff82-4b68-9f2a-10034a97aeec" />
+<img width="1431" height="709" alt="Screenshot 2026-06-22 at 11 19 01 PM" src="https://github.com/user-attachments/assets/d43556d8-9e07-4c60-ab94-a84b6aba677c" />
 <div align="center">
 
 # TRACE // OSINT Copilot
