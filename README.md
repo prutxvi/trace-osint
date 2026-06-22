@@ -1,6 +1,6 @@
-<img width="1470" height="956" alt="Screenshot 2026-06-22 at 11 19 37 PM" src="https://github.com/user-attachments/assets/c375e0b8-7155-4398-bd6b-5564d0609138" />
-<img width="1470" height="956" alt="Screenshot 2026-06-22 at 11 19 27 PM" src="https://github.com/user-attachments/assets/bf9529d5-ff82-4b68-9f2a-10034a97aeec" />
-<img width="1431" height="709" alt="Screenshot 2026-06-22 at 11 19 01 PM" src="https://github.com/user-attachments/assets/d43556d8-9e07-4c60-ab94-a84b6aba677c" />
+<img width="768" height="444" alt="Screenshot 2026-06-22 at 11 20 49 PM" src="https://github.com/user-attachments/assets/3e99a08c-978a-4efa-b0e6-3af91056ee43" />
+<img width="1415" height="704" alt="Screenshot 2026-06-22 at 11 21 53 PM" src="https://github.com/user-attachments/assets/2e8b77cf-8993-4e18-9b11-e900a8d8684a" />
+
 <div align="center">
 
 # TRACE // OSINT Copilot
