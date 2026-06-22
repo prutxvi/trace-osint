@@ -1,0 +1,30 @@
+# TRACE OSINT Copilot - Dependencies
+# Python 3.14+
+
+# CLI & Terminal UI
+typer>=0.9.0
+rich>=13.0.0
+shellingham>=1.5.0
+
+# Data Models & Validation
+pydantic>=2.0.0
+
+# Web & HTTP
+requests>=2.31.0
+dnspython>=2.4.0
+python-whois>=0.9.0
+
+# Reporting
+fpdf2>=2.7.0
+Jinja2>=3.1.0
+
+# Graph & Visualization
+networkx>=3.1
+pyvis>=0.3.0
+
+# Utilities
+psutil>=5.9.0
+python-dateutil>=2.8.0
+jsonpickle>=4.0.0
+defusedxml>=0.7.0
+pillow>=10.0.0

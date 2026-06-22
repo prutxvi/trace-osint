@@ -5,23 +5,35 @@ from datetime import datetime, timezone
 
 from src.models import Case
 from src.scoring.exposure import compute_exposure_score
+from src.sources.case_synthesis import split_findings_by_focus
 
 
 def generate_json_report(case: Case) -> str:
     """Generate a structured JSON evidence report."""
     exposure = compute_exposure_score(case.findings, case.entities)
+    person_findings, infra_findings = split_findings_by_focus(case.findings)
 
     report = {
         "case_id": case.case_id,
         "case_name": case.name,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "policy_mode": case.policy_mode,
+        "case_mode": case.case_mode,
         "status": case.status,
         "phase": case.phase,
+        "story_card": case.story_card.model_dump() if case.story_card else None,
+        "plain_language_summary": case.plain_language_summary,
         "executive_summary": _build_summary(case, exposure),
         "clues": case.clues,
-        "findings": [_serialize_finding(f) for f in case.findings],
+        "parsed_clues": [clue.model_dump() for clue in case.parsed_clues],
+        "findings": [_serialize_finding(f) for f in person_findings],
+        "infrastructure_findings": [_serialize_finding(f) for f in infra_findings],
         "entities": [_serialize_entity(e) for e in case.entities],
+        "canonical_profiles": [profile.model_dump() for profile in case.canonical_profiles],
+        "primary_target_profile_id": case.primary_target_profile_id,
+        "timeline": [event.model_dump() for event in case.timeline],
+        "investigation_notes": [note.model_dump() for note in case.investigation_notes],
+        "recommended_pivots": case.recommended_pivots,
         "sources": _collect_sources(case),
         "confidence_summary": _confidence_summary(case),
         "exposure_assessment": exposure,
@@ -42,6 +54,8 @@ def generate_json_report(case: Case) -> str:
             "created_at": case.created_at,
             "updated_at": case.updated_at,
             "finding_count": len(case.findings),
+            "person_finding_count": len(person_findings),
+            "infra_finding_count": len(infra_findings),
             "entity_count": len(case.entities),
             "audit_event_count": len(case.audit_log),
         },
@@ -78,6 +92,8 @@ def _serialize_finding(f) -> dict:
             "level": f.confidence.level,
             "reasoning": f.confidence.reasoning,
         },
+        "verification": f.verification,
+        "verification_reason": f.verification_reason,
         "created_at": f.created_at,
     }
 
@@ -93,6 +109,8 @@ def _serialize_entity(e) -> dict:
             "level": e.confidence.level,
             "reasoning": e.confidence.reasoning,
         },
+        "verification": e.verification,
+        "verification_reason": e.verification_reason,
         "finding_ids": e.finding_ids,
     }
 

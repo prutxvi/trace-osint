@@ -1,10 +1,32 @@
-"""TRACE OSINT - PDF Report Generator"""
+"""TRACE OSINT - PDF Report Generator
 
+Report layout (person-first):
+  1. Person Card + Avatar (if available)
+  2. Plain Summary (Story Card)
+  3. Key Facts
+  4. Canonical Profiles
+  5. Key Findings (person-focused)
+  6. Timeline
+  7. Infrastructure Context
+  8. Risk & Exposure
+  9. Gaps & Limitations
+ 10. Recommended Next Steps
+ 11. Policy Compliance
+ 12. Audit Trail
+
+Infrastructure findings are separated from person-level findings
+to keep the dossier focused on the target individual.
+"""
+
+import os
+import tempfile
+import urllib.request
 from fpdf import FPDF
 from datetime import datetime, timezone
 
 from src.models import Case
-from src.scoring.exposure import compute_exposure_score
+from src.scoring.exposure import compute_exposure_score, risk_level_label
+from src.sources.case_synthesis import split_findings_by_focus
 
 
 class OSINTReportPDF(FPDF):
@@ -90,113 +112,154 @@ class OSINTReportPDF(FPDF):
 
 
 def generate_pdf_report(case: Case) -> bytes:
-    """Generate a PDF investigation report."""
+    """Generate a PDF investigation report with person-first layout."""
     exposure = compute_exposure_score(case.findings, case.entities)
+    primary_profile = case.canonical_profiles[0] if case.canonical_profiles else None
+    person_findings, infra_findings = split_findings_by_focus(case.findings)
 
     pdf = OSINTReportPDF()
     pdf.alias_nb_pages()
     pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
 
+    # ---- Section 1: Person Card ----
+    if case.case_mode == "person":
+        pdf.section_title("Person Card")
+        if primary_profile:
+            image_added = _try_add_avatar(pdf, primary_profile.avatar_url)
+            if image_added:
+                pdf.set_xy(55, pdf.get_y() - 33)
+            pdf.key_value("Name", primary_profile.display_name or "Unknown")
+            pdf.key_value("Main Handle", primary_profile.main_handle or "Unknown")
+            pdf.key_value("Location", primary_profile.location or "Unknown")
+            pdf.key_value("Verification", primary_profile.verification.upper())
+            pdf.key_value("Confidence", f"{primary_profile.confidence_score:.2f}")
+            if primary_profile.avatar_url:
+                pdf.key_value("Avatar URL", primary_profile.avatar_url)
+            pdf.body_text(primary_profile.summary or case.plain_language_summary)
+        else:
+            pdf.body_text("No single person profile was strong enough to present as the primary person card.")
+        pdf.ln(3)
+
+    # ---- Section 2: Plain Summary (Story Card) ----
+    pdf.section_title("Plain Summary")
+    if case.story_card:
+        card = case.story_card
+        pdf.body_text(f"Who: {card.who_is_this}")
+        pdf.body_text(f"IDs: {card.main_ids}")
+        if card.top_traces:
+            pdf.body_text(f"Key traces: {', '.join(card.top_traces[:5])}")
+        pdf.body_text(f"Risk: {card.risk_summary}")
+        pdf.body_text(f"Verdict: {card.verdict}")
+    elif case.plain_language_summary:
+        pdf.body_text(case.plain_language_summary)
+    else:
+        pdf.body_text("No plain-language summary available.")
+    pdf.ln(3)
+
+    # ---- Section 3: Case Information ----
     pdf.section_title("Case Information")
     pdf.key_value("Case ID", case.case_id)
     pdf.key_value("Case Name", case.name)
+    pdf.key_value("Case Mode", case.case_mode.upper())
     pdf.key_value("Status", case.status.upper())
     pdf.key_value("Policy Mode", case.policy_mode)
     pdf.key_value("Created", case.created_at[:19])
     pdf.key_value("Clues", ", ".join(case.clues))
     pdf.ln(5)
 
-    pdf.section_title("Executive Summary")
-    finding_count = len(case.findings)
-    entity_count = len(case.entities)
-    high_conf = sum(1 for f in case.findings if f.confidence.level == "high")
+    # ---- Section 4: Most Likely Profile ----
+    pdf.section_title("Most Likely Profile")
+    if case.canonical_profiles:
+        top_profile = case.canonical_profiles[0]
+        pdf.key_value("Profile", top_profile.display_name)
+        pdf.key_value("Relationship", top_profile.relationship_to_primary.upper())
+        pdf.key_value("Verification", top_profile.verification.upper())
+        pdf.key_value("Confidence", f"{top_profile.confidence_score:.2f}")
+        pdf.body_text(top_profile.summary)
+    else:
+        pdf.body_text("No canonical profile was strong enough to present.")
+    pdf.ln(5)
 
-    pdf.body_text(
-        f"This investigation examined {len(case.clues)} clue(s) provided for case {case.case_id}.\n\n"
-        f"Findings collected: {finding_count}\n"
-        f"Entities resolved: {entity_count}\n"
-        f"High-confidence matches: {high_conf}\n"
-        f"Overall exposure: {exposure['risk_level'].upper()} (score: {exposure['score']:.2f})\n\n"
-        f"{exposure['summary']}"
-    )
+    # ---- Section 5: Key Facts ----
+    pdf.section_title("Key Facts")
+    if primary_profile:
+        pdf.key_value("Websites", ", ".join(primary_profile.websites[:3]) or "N/A")
+        pdf.key_value("Profiles", ", ".join(primary_profile.profile_urls[:3]) or "N/A")
+        pdf.key_value("Accounts", ", ".join(primary_profile.linked_accounts[:4]) or "N/A")
+        pdf.key_value("Companies", ", ".join(primary_profile.companies[:3]) or "N/A")
+        pdf.key_value("Projects", ", ".join(primary_profile.project_references[:4]) or "N/A")
+    else:
+        pdf.body_text("No primary profile facts were extracted.")
+    pdf.ln(5)
 
-    pdf.section_title("Findings")
-    if case.findings:
-        pdf._col_widths = [8, 25, 65, 30, 62]
+    # ---- Section 6: Findings (person-focused) ----
+    pdf.section_title("Key Findings (Person-Focused)")
+    if person_findings:
+        pdf._col_widths = [8, 25, 55, 40, 62]
         pdf.table_header([
-            ("#", 8), ("Type", 25), ("Value", 65), ("Confidence", 30), ("Source", 62)
+            ("#", 8), ("Type", 25), ("Value", 55), ("Verification", 40), ("Source", 62)
         ])
-        for i, f in enumerate(case.findings[:50], 1):
+        for i, f in enumerate(person_findings[:50], 1):
             pdf.table_row([
                 str(i),
                 f.entity_type.value[:15],
                 f.entity_value[:40],
-                f"{f.confidence.level} ({f.confidence.score:.2f})",
+                f"{f.verification}/{f.confidence.level}",
                 f.source.url[:40] if f.source.url else "N/A",
             ], fill=(i % 2 == 0))
     else:
-        pdf.body_text("No findings collected.")
+        pdf.body_text("No person-level findings collected.")
     pdf.ln(5)
 
-    pdf.section_title("Entity Resolution")
-    if case.entities:
-        pdf._col_widths = [25, 55, 55, 55]
+    # ---- Section 7: Timeline ----
+    pdf.section_title("Relationship Timeline")
+    if case.timeline:
+        pdf._col_widths = [35, 55, 30, 70]
         pdf.table_header([
-            ("Type", 25), ("Value", 55), ("Aliases", 55), ("Confidence", 55)
+            ("Time", 35), ("Event", 55), ("Verification", 30), ("Source", 70)
         ])
-        for i, e in enumerate(case.entities, 1):
-            aliases = ", ".join(e.aliases[:3]) if e.aliases else "-"
+        for i, event in enumerate(case.timeline[:20], 1):
             pdf.table_row([
-                e.type.value[:15],
-                e.value[:35],
-                aliases[:35],
-                f"{e.confidence.level} ({e.confidence.score:.2f})",
+                event.timestamp[:19],
+                event.title[:30],
+                event.verification[:20],
+                event.source[:40],
             ], fill=(i % 2 == 0))
     else:
-        pdf.body_text("No entities resolved.")
+        pdf.body_text("No timeline events were extracted from public findings.")
     pdf.ln(5)
 
+    # ---- Section 8: Infrastructure Context ----
+    pdf.section_title("Infrastructure Context")
+    if infra_findings:
+        pdf.body_text("Generic domain, DNS, WHOIS, and provider-level data (not person-specific).")
+        pdf._col_widths = [8, 25, 55, 30, 72]
+        pdf.table_header([
+            ("#", 8), ("Type", 25), ("Value", 55), ("Confidence", 30), ("Source", 72)
+        ])
+        for i, f in enumerate(infra_findings[:30], 1):
+            pdf.table_row([
+                str(i),
+                f.entity_type.value[:15],
+                f.entity_value[:40],
+                f"{f.confidence.level}",
+                f.source.url[:40] if f.source.url else "N/A",
+            ], fill=(i % 2 == 0))
+    else:
+        pdf.body_text("No generic infrastructure findings.")
+    pdf.ln(5)
+
+    # ---- Section 9: Risk & Exposure ----
     pdf.section_title("Risk & Exposure Assessment")
     pdf.key_value("Exposure Score", f"{exposure['score']:.2f}")
     pdf.key_value("Risk Level", exposure["risk_level"].upper())
+    pdf.key_value("Risk Label", exposure.get("risk_label", "Unknown"))
     pdf.key_value("Contributing Factors", str(exposure["factor_count"]))
     pdf.ln(3)
     pdf.body_text(exposure["summary"])
 
-    pdf.section_title("Source Inventory")
-    sources = {}
-    for f in case.findings:
-        key = f.source.url or "unknown"
-        if key not in sources:
-            sources[key] = f.source
-    if sources:
-        pdf._col_widths = [30, 50, 20, 90]
-        pdf.table_header([
-            ("Type", 30), ("Title", 50), ("Reliability", 20), ("URL", 90)
-        ])
-        for i, s in enumerate(list(sources.values())[:30], 1):
-            pdf.table_row([
-                s.source_type[:20],
-                s.title[:30],
-                f"{s.reliability:.1f}",
-                s.url[:55],
-            ], fill=(i % 2 == 0))
-    else:
-        pdf.body_text("No sources consulted.")
-    pdf.ln(5)
-
-    pdf.section_title("Confidence Distribution")
-    levels = {"high": 0, "medium": 0, "low": 0, "minimal": 0}
-    for f in case.findings:
-        levels[f.confidence.level] = levels.get(f.confidence.level, 0) + 1
-    total = len(case.findings) or 1
-    pdf.key_value("High", f"{levels['high']} ({levels['high']/total*100:.1f}%)")
-    pdf.key_value("Medium", f"{levels['medium']} ({levels['medium']/total*100:.1f}%)")
-    pdf.key_value("Low", f"{levels['low']} ({levels['low']/total*100:.1f}%)")
-    pdf.key_value("Minimal", f"{levels['minimal']} ({levels['minimal']/total*100:.1f}%)")
-    pdf.ln(5)
-
+    # ---- Section 10: Gaps & Limitations ----
     pdf.section_title("Gaps & Limitations")
     gaps = [
         "Investigation limited to public, read-only sources only",
@@ -208,6 +271,7 @@ def generate_pdf_report(case: Case) -> bytes:
     for gap in gaps:
         pdf.body_text(f"- {gap}")
 
+    # ---- Section 11: Recommended Next Steps ----
     pdf.section_title("Recommended Next Steps")
     next_steps = [
         "Cross-reference high-confidence findings with additional public sources",
@@ -219,6 +283,7 @@ def generate_pdf_report(case: Case) -> bytes:
     for step in next_steps:
         pdf.body_text(f"- {step}")
 
+    # ---- Section 12: Policy Compliance ----
     pdf.section_title("Policy Compliance")
     pdf.key_value("Mode", case.policy_mode)
     pdf.key_value("Status", "PASS")
@@ -227,6 +292,7 @@ def generate_pdf_report(case: Case) -> bytes:
         "public-source, read-only, lawful intelligence gathering methods."
     )
 
+    # ---- Section 13: Audit Trail ----
     if case.audit_log:
         pdf.section_title("Audit Trail (Last 20 Events)")
         pdf._col_widths = [35, 25, 20, 45, 65]
@@ -243,6 +309,33 @@ def generate_pdf_report(case: Case) -> bytes:
             ], fill=(i % 2 == 0))
 
     return pdf.output()
+
+
+def _try_add_avatar(pdf: OSINTReportPDF, avatar_url: str) -> bool:
+    """Best-effort avatar embed for the primary profile."""
+    if not avatar_url or not avatar_url.startswith(("http://", "https://")):
+        return False
+
+    suffix = ".jpg"
+    if ".png" in avatar_url.lower():
+        suffix = ".png"
+
+    tmp_path = None
+    try:
+        fd, tmp_path = tempfile.mkstemp(suffix=suffix)
+        os.close(fd)
+        urllib.request.urlretrieve(avatar_url, tmp_path)
+        pdf.image(tmp_path, x=10, y=pdf.get_y(), w=35, h=35)
+        pdf.ln(38)
+        return True
+    except Exception:
+        return False
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
 
 
 def save_pdf_report(case: Case, output_path: str) -> str:

@@ -21,6 +21,21 @@ class EntityType(str, Enum):
     UNKNOWN = "unknown"
 
 
+class ClueType(str, Enum):
+    EMAIL = "email"
+    PHONE = "phone"
+    GITHUB_PROFILE = "github_profile"
+    GITHUB_USERNAME = "github_username"
+    LINKEDIN_PROFILE = "linkedin_profile"
+    URL = "url"
+    NAME = "name"
+    USERNAME = "username"
+    DOMAIN = "domain"
+    IP_ADDRESS = "ip_address"
+    ORGANIZATION = "organization"
+    UNKNOWN = "unknown"
+
+
 class Confidence(BaseModel):
     score: float = Field(ge=0.0, le=1.0, default=0.0)
     level: str = "minimal"
@@ -55,6 +70,8 @@ class Finding(BaseModel):
     details: dict = Field(default_factory=dict)
     source: Source = Field(default_factory=Source)
     confidence: Confidence = Field(default_factory=Confidence)
+    verification: str = "unreviewed"
+    verification_reason: str = ""
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
@@ -65,6 +82,67 @@ class Entity(BaseModel):
     aliases: list[str] = Field(default_factory=list)
     confidence: Confidence = Field(default_factory=Confidence)
     finding_ids: list[str] = Field(default_factory=list)
+    linked_entity_ids: list[str] = Field(default_factory=list)
+    verification: str = "unreviewed"
+    verification_reason: str = ""
+
+
+class InvestigationNote(BaseModel):
+    stage: str = ""
+    message: str = ""
+    confidence_impact: str = "neutral"
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+class TimelineEvent(BaseModel):
+    timestamp: str = ""
+    title: str = ""
+    description: str = ""
+    source: str = ""
+    confidence: str = "minimal"
+    verification: str = "unreviewed"
+
+
+class CanonicalProfile(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid4())[:8])
+    display_name: str = ""
+    mode: str = "person"
+    main_handle: str = ""
+    avatar_url: str = ""
+    location: str = ""
+    names: list[str] = Field(default_factory=list)
+    roles: list[str] = Field(default_factory=list)
+    bios: list[str] = Field(default_factory=list)
+    websites: list[str] = Field(default_factory=list)
+    profile_urls: list[str] = Field(default_factory=list)
+    linked_accounts: list[str] = Field(default_factory=list)
+    project_references: list[str] = Field(default_factory=list)
+    activity_clues: list[str] = Field(default_factory=list)
+    companies: list[str] = Field(default_factory=list)
+    identifiers: list[str] = Field(default_factory=list)
+    evidence_finding_ids: list[str] = Field(default_factory=list)
+    confidence_score: float = Field(ge=0.0, le=1.0, default=0.0)
+    verification: str = "unreviewed"
+    relationship_to_primary: str = "primary"
+    is_primary: bool = False
+    summary: str = ""
+
+
+class StoryCard(BaseModel):
+    who_is_this: str = ""
+    main_ids: str = ""
+    top_traces: list[str] = Field(default_factory=list)
+    risk_summary: str = ""
+    verdict: str = ""
+    full_text: str = ""
+
+
+class ParsedClue(BaseModel):
+    raw: str = ""
+    type: ClueType = ClueType.UNKNOWN
+    normalized: str = ""
+    label: str = ""
+    confidence: float = Field(ge=0.0, le=1.0, default=0.5)
 
 
 class PlanStep(BaseModel):
@@ -99,11 +177,21 @@ class Case(BaseModel):
     case_id: str = Field(default_factory=lambda: f"CASE-{uuid4().hex[:8].upper()}")
     name: str = ""
     clues: list[str] = Field(default_factory=list)
+    parsed_clues: list[ParsedClue] = Field(default_factory=list)
     policy_mode: str = "READ_ONLY"
+    ui_mode: str = "quiet"
+    case_mode: str = "person"
     phase: str = "initialized"
     plan: Optional[InvestigationPlan] = None
     findings: list[Finding] = Field(default_factory=list)
     entities: list[Entity] = Field(default_factory=list)
+    canonical_profiles: list[CanonicalProfile] = Field(default_factory=list)
+    timeline: list[TimelineEvent] = Field(default_factory=list)
+    investigation_notes: list[InvestigationNote] = Field(default_factory=list)
+    recommended_pivots: list[str] = Field(default_factory=list)
+    plain_language_summary: str = ""
+    story_card: Optional[StoryCard] = None
+    primary_target_profile_id: str = ""
     audit_log: list[AuditEvent] = Field(default_factory=list)
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

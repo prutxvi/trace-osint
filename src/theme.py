@@ -39,6 +39,7 @@ PHASE_LABELS = {
     "initialized": "[dim]INIT[/dim]",
     "planning": "[bold cyan]PLANNING[/bold cyan]",
     "collecting": "[bold green]COLLECTING[/bold green]",
+    "verifying": "[bold blue]VERIFYING[/bold blue]",
     "resolving": "[bold cyan]RESOLVING[/bold cyan]",
     "analyzing": "[bold yellow]ANALYZING[/bold yellow]",
     "reporting": "[bold green]REPORTING[/bold green]",

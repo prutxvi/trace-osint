@@ -1,23 +1,42 @@
-"""TRACE OSINT Copilot - Markdown Report Generator"""
+"""TRACE OSINT Copilot - Markdown Report Generator
+
+Report layout (person-first):
+  1. Person Card + Plain Summary (Story Card)
+  2. Canonical Person Profiles
+  3. Key Findings (person/email focused)
+  4. Timeline
+  5. Source Inventory
+  6. Infrastructure Context (domains, DNS, WHOIS, generic provider info)
+  7. Risk & Exposure
+  8. Gaps & Limitations
+  9. Recommended Next Steps
+
+Infrastructure findings are separated from person-level findings
+to keep the dossier focused on the target individual.
+"""
 
 from datetime import datetime, timezone
 
 from src.models import Case, Finding, Entity, AuditEvent
-from src.scoring.exposure import compute_exposure_score
+from src.scoring.exposure import compute_exposure_score, risk_level_label
+from src.sources.case_synthesis import split_findings_by_focus
 
 
 def generate_markdown_report(case: Case) -> str:
     """Generate a polished markdown report for a case."""
     exposure = compute_exposure_score(case.findings, case.entities)
+    person_findings, infra_findings = split_findings_by_focus(case.findings)
 
     sections = [
         _header(case),
+        _person_card(case),
+        _story_summary(case),
         _executive_summary(case, exposure),
-        _investigation_scope(case),
-        _findings_section(case),
-        _entity_resolution(case),
+        _canonical_profiles(case),
+        _person_findings_section(person_findings),
+        _timeline_section(case),
         _source_inventory(case),
-        _confidence_matrix(case),
+        _infrastructure_context(infra_findings),
         _exposure_assessment(exposure),
         _gaps_and_limitations(case),
         _next_steps(case),
@@ -35,11 +54,50 @@ def _header(case: Case) -> str:
 |-------|-------|
 | **Case ID** | `{case.case_id}` |
 | **Case Name** | {case.name} |
+| **Case Mode** | {case.case_mode} |
 | **Status** | {case.status} |
 | **Phase** | {case.phase} |
 | **Policy Mode** | `{case.policy_mode}` |
 | **Created** | {case.created_at} |
 | **Report Generated** | {datetime.now(timezone.utc).isoformat()} |"""
+
+
+def _person_card(case: Case) -> str:
+    if case.case_mode != "person" or not case.canonical_profiles:
+        return "## Primary Target\n\nNo person card available."
+
+    profile = case.canonical_profiles[0]
+    return f"""## Primary Target
+
+| Field | Value |
+|-------|-------|
+| Name | {profile.display_name or 'Unknown'} |
+| Main Handle | {profile.main_handle or 'Unknown'} |
+| Location | {profile.location or 'Unknown'} |
+| Verification | {profile.verification} |
+| Confidence | {profile.confidence_score:.2f} |
+| Avatar | {profile.avatar_url or 'N/A'} |
+
+{profile.summary or case.plain_language_summary}"""
+
+
+def _story_summary(case: Case) -> str:
+    """Render the Plain Summary / Story Card section."""
+    if not case.story_card:
+        if not case.plain_language_summary:
+            return "## Plain Summary\n\nNo summary available."
+        return f"## Plain Summary\n\n{case.plain_language_summary}"
+
+    card = case.story_card
+    lines = []
+    lines.append(f"**Who:** {card.who_is_this}")
+    lines.append(f"**IDs:** {card.main_ids}")
+    if card.top_traces:
+        lines.append(f"**Key traces:** {', '.join(card.top_traces[:5])}")
+    lines.append(f"**Risk:** {card.risk_summary}")
+    lines.append(f"**Verdict:** {card.verdict}")
+
+    return f"## Plain Summary\n\n" + "\n\n".join(lines)
 
 
 def _executive_summary(case: Case, exposure: dict) -> str:
@@ -62,51 +120,58 @@ This investigation examined **{len(case.clues)} clue(s)** provided for case `{ca
     return summary
 
 
-def _investigation_scope(case: Case) -> str:
-    clues_list = "\n".join(f"- `{c}`" for c in case.clues)
-    return f"""## Investigation Scope
-
-**Clues Provided:**
-{clues_list}
-
-**Objective:** Resolve provided clues to public-source intelligence findings using read-only, lawful investigation methods."""
-
-
-def _findings_section(case: Case) -> str:
-    if not case.findings:
-        return "## Findings\n\nNo findings collected."
+def _canonical_profiles(case: Case) -> str:
+    if not case.canonical_profiles:
+        return "## Canonical Profiles\n\nNo merged canonical profiles available."
 
     rows = []
-    for i, f in enumerate(case.findings, 1):
+    for profile in case.canonical_profiles[:10]:
+        rel = profile.relationship_to_primary.upper()
+        rows.append(
+            f"| {profile.display_name} | {rel} | {profile.verification} | {profile.confidence_score:.2f} | "
+            f"{profile.summary[:80]} |"
+        )
+
+    header = """## Canonical Person Profiles
+
+| Profile | Relation | Verification | Confidence | Why It Matters |
+|---------|----------|--------------|------------|----------------|"""
+    return header + "\n" + "\n".join(rows)
+
+
+def _person_findings_section(findings: list[Finding]) -> str:
+    if not findings:
+        return "## Key Findings\n\nNo person-level findings collected."
+
+    rows = []
+    for i, f in enumerate(findings[:50], 1):
         rows.append(
             f"| {i} | `{f.entity_type.value}` | {f.entity_value[:40]} | "
-            f"{f.confidence.level} ({f.confidence.score:.2f}) | "
+            f"{f.verification} / {f.confidence.level} ({f.confidence.score:.2f}) | "
             f"{f.source.url[:50] if f.source.url else 'N/A'} |"
         )
 
-    header = """## Findings
+    header = """## Key Findings (Person-Focused)
 
 | # | Type | Value | Confidence | Source |
 |---|------|-------|------------|--------|"""
     return header + "\n" + "\n".join(rows)
 
 
-def _entity_resolution(case: Case) -> str:
-    if not case.entities:
-        return "## Entity Resolution\n\nNo entities resolved."
+def _timeline_section(case: Case) -> str:
+    if not case.timeline:
+        return "## Timeline\n\nNo timeline events were extracted."
 
     rows = []
-    for e in case.entities:
-        aliases = ", ".join(e.aliases[:3]) if e.aliases else "none"
+    for event in case.timeline[:20]:
         rows.append(
-            f"| `{e.type.value}` | {e.value} | {aliases} | "
-            f"{e.confidence.level} ({e.confidence.score:.2f}) |"
+            f"| {event.timestamp[:19]} | {event.title[:40]} | {event.verification} | {event.source[:30]} |"
         )
 
-    header = """## Entity Resolution
+    header = """## Timeline
 
-| Type | Canonical Value | Aliases | Confidence |
-|------|----------------|---------|------------|"""
+| Time | Event | Verification | Source |
+|------|-------|--------------|--------|"""
     return header + "\n" + "\n".join(rows)
 
 
@@ -139,20 +204,24 @@ def _source_inventory(case: Case) -> str:
     return header + "\n" + "\n".join(rows)
 
 
-def _confidence_matrix(case: Case) -> str:
-    levels = {"high": 0, "medium": 0, "low": 0, "minimal": 0}
-    for f in case.findings:
-        levels[f.confidence.level] = levels.get(f.confidence.level, 0) + 1
+def _infrastructure_context(findings: list[Finding]) -> str:
+    if not findings:
+        return "## Infrastructure Context\n\nNo generic infrastructure findings."
 
-    total = len(case.findings) or 1
-    return f"""## Confidence Distribution
+    rows = []
+    for i, f in enumerate(findings[:30], 1):
+        rows.append(
+            f"| {i} | `{f.entity_type.value}` | {f.entity_value[:40]} | "
+            f"{f.confidence.level} | {f.source.url[:40] if f.source.url else 'N/A'} |"
+        )
 
-| Level | Count | Percentage |
-|-------|-------|------------|
-| High | {levels['high']} | {levels['high']/total*100:.1f}% |
-| Medium | {levels['medium']} | {levels['medium']/total*100:.1f}% |
-| Low | {levels['low']} | {levels['low']/total*100:.1f}% |
-| Minimal | {levels['minimal']} | {levels['minimal']/total*100:.1f}% |"""
+    header = """## Infrastructure Context
+
+> Generic domain, DNS, WHOIS, and provider-level data. These are not person-specific.
+
+| # | Type | Value | Confidence | Source |
+|---|------|-------|------------|--------|"""
+    return header + "\n" + "\n".join(rows)
 
 
 def _exposure_assessment(exposure: dict) -> str:
@@ -160,6 +229,7 @@ def _exposure_assessment(exposure: dict) -> str:
 
 - **Exposure Score:** {exposure['score']:.2f}
 - **Risk Level:** {exposure['risk_level'].upper()}
+- **Risk Label:** {exposure.get('risk_label', 'Unknown')}
 - **Contributing Factors:** {exposure['factor_count']}
 
 **Signals Detected:** {', '.join(exposure['signals']) if exposure['signals'] else 'None'}

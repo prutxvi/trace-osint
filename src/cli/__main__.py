@@ -1,4 +1,4 @@
-"""TRACE OSINT Copilot - Module Entry Point"""
+"""TRACE OSINT Copilot - CLI Entry Point."""
 
 from src.cli.app import main
 
