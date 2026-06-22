@@ -311,7 +311,7 @@ def interactive():
     from src.ui_helpers import (
         render_finding_summary, render_tool_activity,
     )
-    from src.sources.clue_parser import detect_case_mode, parse_clues
+    from src.cli.commands.run import run_investigation
 
     def render_clues_detected(clues):
         from rich.table import Table
