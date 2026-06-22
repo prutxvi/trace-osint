@@ -123,3 +123,46 @@ def render_case_list(cases: list[dict]):
         )
 
     console.print(Panel(table, border_style="cyan", title="[bold cyan]Past Cases[/bold cyan]"))
+
+
+def render_case_summary(case):
+    """Render case summary."""
+    table = Table(show_header=False, box=None, padding=(0, 2))
+    table.add_column(style="bold green", width=18)
+    table.add_column(style="bold white", width=40)
+    table.add_row("CASE ID", case.case_id)
+    table.add_row("TARGET", case.name)
+    table.add_row("MODE", case.case_mode.upper())
+    table.add_row("FINDINGS", str(len(case.findings)))
+    table.add_row("ENTITIES", str(len(case.entities)))
+    console.print(Panel(table, border_style="green", title="[bold green]CASE SUMMARY[/bold green]"))
+
+
+def render_investigation_notes(case):
+    """Render investigation notes."""
+    if not case.investigation_notes:
+        return
+    console.print("[bold cyan]INVESTIGATION NOTES[/bold cyan]")
+    for note in case.investigation_notes[-5:]:
+        console.print(f"  [dim]{note.created_at}[/dim] {note.message}")
+
+
+def render_canonical_profiles(case):
+    """Render canonical profiles."""
+    if not case.canonical_profiles:
+        return
+    console.print("[bold cyan]CANONICAL PROFILES[/bold cyan]")
+    for p in case.canonical_profiles[:3]:
+        role = " [bold green](PRIMARY)[/bold green]" if p.is_primary else ""
+        loc = f" | {p.location}" if p.location else ""
+        console.print(f"  [bold]{p.display_name}[/bold]{role}{loc}")
+        console.print(f"    @{p.main_handle} | {', '.join(p.profile_urls[:2]) if p.profile_urls else 'none'}")
+
+
+def render_timeline(case):
+    """Render timeline events."""
+    if not case.timeline:
+        return
+    console.print("[bold cyan]TIMELINE[/bold cyan]")
+    for event in case.timeline[:10]:
+        console.print(f"  [dim]{event.timestamp}[/dim] {event.title}")
