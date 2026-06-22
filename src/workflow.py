@@ -32,6 +32,17 @@ from src.sources.wikidata_intel import get_wikidata_intelligence
 from src.sources.people_search import get_truepeoplesearch_intelligence
 from src.sources.breach_intel import get_breach_intelligence
 from src.sources.court_intel import get_court_intelligence
+from src.sources.identity_collapse import collapse_identity, IdentityProfile
+from src.sources.secret_hunter import get_secret_leak_intelligence
+from src.sources.investigation_graph import generate_interactive_graph, generate_graph_summary
+from src.sources.ai_pivot import analyze_findings, suggest_pivots, generate_ai_summary
+from src.sources.tech_fingerprint import get_tech_stack_intelligence
+from src.sources.subdomain_takeover import get_subdomain_takeover_intelligence
+from src.sources.commit_unmasker import get_commit_author_intelligence
+from src.sources.case_memory import (
+    save_case_memory, save_finding_memory, update_pattern,
+    update_source_effectiveness, get_best_sources, get_case_stats,
+)
 
 
 class WorkflowEngine:
@@ -87,16 +98,19 @@ class WorkflowEngine:
         self._emit_phase("resolving", "Resolving and normalizing entities...")
         self._resolve_entities()
 
-        self._emit_phase("analyzing", "Analyzing findings...")
+        self._emit_phase("analyzing", "Analyzing findings and building identity...")
         self._analyze()
 
-        self._emit_phase("reporting", "Generating reports...")
+        self._emit_phase("reporting", "Generating reports and graphs...")
+        self._generate_advanced_outputs()
+
         self.case.status = "complete"
         self.audit.log(self.case.phase, "workflow", "investigation_complete",
                       f"Findings: {len(self.case.findings)}, Entities: {len(self.case.entities)}")
         self._emit_event("Investigation complete")
 
         self._finalize_audit()
+        self._save_to_memory()
 
     def _generate_plan(self) -> InvestigationPlan:
         """Generate investigation plan from clues."""
@@ -398,7 +412,7 @@ class WorkflowEngine:
                       f"Resolved {len(self.case.entities)} entities")
 
     def _analyze(self):
-        """Analyze findings."""
+        """Analyze findings with AI pivot engine."""
         self.audit.log(self.case.phase, "analyst", "analysis_started",
                       f"Analyzing {len(self.case.findings)} findings")
 
@@ -406,8 +420,68 @@ class WorkflowEngine:
         high_conf = [f for f in self.case.findings if f.confidence.level == "high"]
         self._emit_event(f"Analysis: {len(high_conf)} high-confidence findings, {summary['total_entities']} entities")
 
+        self._emit_tool("identity_collapse", "running", "Building identity profile...")
+        self._identity_profile = collapse_identity(self.case.findings)
+        self._emit_tool("identity_collapse", "ok", f"Risk: {self._identity_profile.exposure_level}")
+
+        self._emit_tool("ai_pivot", "running", "AI analyzing findings...")
+        self._ai_analysis = analyze_findings(self.case)
+        self._emit_tool("ai_pivot", "ok", f"Generated {len(self._ai_analysis.get('next_steps', []))} next steps")
+
+        self._pivots = suggest_pivots(self.case.findings, self.case.entities)
+        self._emit_tool("pivot_engine", "ok", f"Found {len(self._pivots)} pivot points")
+
         self.audit.log(self.case.phase, "analyst", "analysis_complete",
-                      f"Completed analysis")
+                      f"Completed analysis with AI pivot engine")
+
+    def _generate_advanced_outputs(self):
+        """Generate graph, tech fingerprint, and advanced reports."""
+        self._emit_tool("graph_builder", "running", "Generating investigation graph...")
+        graph_path = generate_interactive_graph(
+            self.case.findings, self.case.entities, self.case.case_id
+        )
+        if graph_path:
+            self._emit_tool("graph_builder", "ok", f"Graph saved: {graph_path}")
+        else:
+            self._emit_tool("graph_builder", "error", "Graph generation failed")
+
+        for finding in self.case.findings:
+            if finding.entity_type == EntityType.DOMAIN:
+                self._emit_tool("tech_fingerprint", "running", f"Scanning {finding.entity_value}...")
+                tech_findings = get_tech_stack_intelligence(finding.entity_value)
+                self.case.findings.extend(tech_findings)
+
+                self._emit_tool("subdomain_takeover", "running", f"Checking {finding.entity_value}...")
+                takeover_findings = get_subdomain_takeover_intelligence(finding.entity_value)
+                self.case.findings.extend(takeover_findings)
+                break
+
+        self._emit_tool("secret_hunter", "running", "Scanning for leaked secrets...")
+        for clue in self.case.clues:
+            secret_findings = get_secret_leak_intelligence(clue)
+            self.case.findings.extend(secret_findings)
+        self._emit_tool("secret_hunter", "ok", "Secret scan complete")
+
+    def _save_to_memory(self):
+        """Save investigation data to case memory."""
+        try:
+            save_case_memory(
+                self.case.case_id,
+                self.case.clues,
+                len(self.case.findings),
+                len(self.case.entities),
+                getattr(self, '_identity_profile', IdentityProfile("")).risk_score,
+            )
+            for finding in self.case.findings:
+                save_finding_memory(self.case.case_id, finding)
+                update_pattern("entity_type", finding.entity_type.value)
+                update_source_effectiveness(
+                    finding.source.source_type,
+                    True,
+                    finding.confidence.score,
+                )
+        except Exception:
+            pass
 
     def _finalize_audit(self):
         """Merge audit events into the case."""

@@ -238,11 +238,29 @@ def run_investigation(case: Case):
         f"  [green]+[/green] [bold]Audit:[/bold]    {audit_path}",
     ]
 
+    graph_path = CASES_DIR / case.case_id / "reports" / "investigation_graph.html"
+    if graph_path.exists():
+        report_lines.append(f"  [green]+[/green] [bold]Graph:[/bold]   {graph_path}")
+
     console.print(Panel(
         "\n".join(report_lines),
         border_style="green",
         title="[bold green]Done[/bold green]",
     ))
+
+    if hasattr(engine, '_identity_profile') and engine._identity_profile:
+        profile = engine._identity_profile
+        console.print(f"\n[bold cyan]Identity Profile:[/bold cyan]")
+        console.print(f"  Risk Level: [{profile.exposure_level}]{profile.exposure_level.upper()}[/{profile.exposure_level}]")
+        console.print(f"  Risk Score: {profile.risk_score:.2f}")
+        if profile.real_name:
+            console.print(f"  Real Name: {profile.real_name}")
+        if profile.emails:
+            console.print(f"  Emails: {', '.join(profile.emails[:3])}")
+        if profile.social_profiles:
+            console.print(f"  Social: {len(profile.social_profiles)} profile(s)")
+        if profile.breaches:
+            console.print(f"  Breaches: {len(profile.breaches)} found")
 
 
 def render_finding_summary(finding_count: int, entity_count: int):
