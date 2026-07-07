@@ -1,0 +1,1 @@
+"""public-fetch package."""
