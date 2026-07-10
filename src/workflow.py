@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT Copilot - Investigation Workflow Engine"""
 
 import time
