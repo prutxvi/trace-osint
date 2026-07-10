@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT Copilot - Trace Correlation Module"""
 
 from src.models import AuditEvent, Case
