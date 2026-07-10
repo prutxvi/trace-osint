@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT Copilot - Terminal Theme & Rich Styling"""
 
 from rich.theme import Theme

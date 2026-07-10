@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT Copilot - Case Storage & Retrieval"""
 
 import json
