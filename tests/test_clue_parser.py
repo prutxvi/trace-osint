@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Tests for clue_parser module."""
 
 import sys
