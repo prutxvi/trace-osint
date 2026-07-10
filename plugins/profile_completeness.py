@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT Copilot - Profile Completeness Scorer Plugin.
 
 Example plugin that scores how complete a person's digital profile is.
