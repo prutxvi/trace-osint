@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT - 400+ Username Platform Checker"""
 
 import urllib.request

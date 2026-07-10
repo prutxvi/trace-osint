@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT - Tech Stack Fingerprinting
 
 Detects technology stack from domain: CMS, frameworks, CDNs, versions.

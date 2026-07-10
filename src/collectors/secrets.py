@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT - Secret Leak Hunter
 
 Scans GitHub, Pastebin, Gists for exposed secrets linked to a target.

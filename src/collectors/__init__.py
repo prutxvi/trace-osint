@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT Copilot - Collectors Package.
 
 Pluggable data collection modules that retrieve intelligence from public sources.
