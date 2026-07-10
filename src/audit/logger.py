@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT Copilot - Audit Logger Module"""
 
 from datetime import datetime, timezone
