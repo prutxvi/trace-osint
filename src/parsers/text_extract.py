@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT Copilot - Text Extraction Module"""
 
 import re
