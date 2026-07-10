@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT - Entity Correlation Engine"""
 
 from src.models import Finding, Entity, EntityType, Confidence

@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT - Investigation Graph Generator
 
 Generates interactive network graphs showing entity relationships.
