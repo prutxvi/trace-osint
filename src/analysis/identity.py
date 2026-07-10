@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT - Identity Collapse Engine
 
 Builds a complete digital footprint from a single clue.
