@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT Copilot - Confidence Scoring Module"""
 
 from src.models import Finding, Entity, Confidence
