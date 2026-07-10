@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT Copilot - Plugin Loader.
 
 Discovers and loads plugins from the plugins/ directory.

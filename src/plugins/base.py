@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT Copilot - Plugin Base Interface.
 
 All plugins must implement this interface to be discovered and executed.
