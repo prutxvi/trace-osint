@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT - AI Pivot Engine
 
 Uses Groq/LLM to make intelligent decisions about next investigation steps.
