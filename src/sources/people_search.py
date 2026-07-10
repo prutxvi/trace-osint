@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT - TruePeopleSearch Person Intelligence"""
 
 import re
