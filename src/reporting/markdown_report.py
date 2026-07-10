@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT Copilot - Markdown Report Generator
 
 Report layout (person-first):
