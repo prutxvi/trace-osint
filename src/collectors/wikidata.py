@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT - Wikidata Entity Intelligence"""
 
 import json
