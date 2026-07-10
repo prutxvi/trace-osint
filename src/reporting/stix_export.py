@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT - STIX/MISP-Lite Export Module
 
 Generates a simple STIX-compatible JSON export of investigation findings.

@@ -1,3 +1,4 @@
+from __future__ import annotations
 """TRACE OSINT - PDF Report Generator
 
 Report layout (person-first):
