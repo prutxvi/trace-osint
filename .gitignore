@@ -55,3 +55,7 @@ build/
 *.pem
 *.key
 .env.local
+
+.DS_Store
+*.pyc
+__pycache__/
