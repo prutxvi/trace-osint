@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """TRACE OSINT - Explicit clue parser."""
 
 from __future__ import annotations
