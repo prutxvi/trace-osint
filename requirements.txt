@@ -16,7 +16,7 @@ python-whois>=0.9.0
 
 # Reporting
 fpdf2>=2.7.0
-Jinja2>=3.1.0
+Jinja2>=3.1.6
 
 # Graph & Visualization
 networkx>=3.1
