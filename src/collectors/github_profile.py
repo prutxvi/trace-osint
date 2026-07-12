@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """TRACE OSINT - GitHub profile extractor."""
 
 from __future__ import annotations
