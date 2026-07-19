@@ -1,0 +1,4 @@
+# trace-osint Configuration
+
+## Options
+
