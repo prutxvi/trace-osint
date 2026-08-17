@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """TRACE OSINT - Primary target selection and noise filtering."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import annotations
 """TRACE OSINT Copilot - Configuration Package.
 
 Centralized configuration, policy enforcement, and environment loading.

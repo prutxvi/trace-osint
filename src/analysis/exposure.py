@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import annotations
 """TRACE OSINT Copilot - Exposure Scoring Module
 
 Risk band mapping (canonical definition):

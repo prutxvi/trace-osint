@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import annotations
 """TRACE OSINT Copilot - Correlation Package.
 
 Entity resolution, normalization, and cross-linking engine.

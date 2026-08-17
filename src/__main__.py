@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import annotations
 """TRACE OSINT Copilot - Module Entry Point"""
 
 from src.cli.app import main

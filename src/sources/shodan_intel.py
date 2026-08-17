@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import annotations
 """TRACE OSINT - Shodan Infrastructure Intelligence"""
 
 import json

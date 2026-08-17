@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import annotations
 """TRACE OSINT Copilot - Analysis Package.
 
 Identity collapse, AI pivots, scoring, and case synthesis.

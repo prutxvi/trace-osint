@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import annotations
 """Tests for identity collapse engine."""
 
 import sys

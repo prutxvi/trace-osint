@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import annotations
 """TRACE OSINT - Commit Author Unmasker
 
 Extracts real names and emails from public Git commit history.

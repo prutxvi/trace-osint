@@ -28,3 +28,4 @@ python-dateutil>=2.8.0
 jsonpickle>=4.0.0
 defusedxml>=0.7.0
 pillow>=10.0.0
+

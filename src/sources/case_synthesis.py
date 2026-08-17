@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """TRACE OSINT - Guided case synthesis helpers."""
 
 from __future__ import annotations

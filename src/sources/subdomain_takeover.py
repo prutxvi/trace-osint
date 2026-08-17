@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import annotations
 """TRACE OSINT - Subdomain Takeover Checker
 
 Checks for dangling DNS records that could be taken over.

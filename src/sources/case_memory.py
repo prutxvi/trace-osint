@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import annotations
 """TRACE OSINT - Case Memory & Learning System
 
 Tracks patterns across investigations to improve future results.

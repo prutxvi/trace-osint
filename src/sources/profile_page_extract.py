@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """TRACE OSINT - Generic public profile and portfolio extractor."""
 
 from __future__ import annotations

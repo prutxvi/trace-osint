@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import annotations
 """TRACE OSINT Copilot - Investigation Runner.
 
 Executes the full investigation workflow and renders results.

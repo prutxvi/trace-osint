@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import annotations
 """TRACE OSINT Copilot - Typer CLI Application.
 
 Professional command-line interface for terminal-native OSINT investigations.
