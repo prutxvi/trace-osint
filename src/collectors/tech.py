@@ -83,7 +83,10 @@ def fingerprint_domain(domain: str) -> dict:
                 "powered_by": powered_by,
                 "headers": {k: v for k, v in headers.items()},
             }
-    except Exception:
+    except urllib.error.URLError as exc:
+        return {"domain": domain, "technologies": [], "error": f"Network error: {exc.reason}"
+                if hasattr(exc, "reason") else "Network error"}
+    except (TimeoutError, ValueError):
         return {"domain": domain, "technologies": [], "error": "Failed to fetch"}
 
 
