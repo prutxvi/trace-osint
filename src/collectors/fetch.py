@@ -63,7 +63,9 @@ def fetch_public_url(url: str) -> Optional[dict]:
                     "status": resp.status,
                     "url": url,
                 }
-        except Exception as e:
+        except (urllib.error.URLError, TimeoutError, ValueError) as e:
+            import logging
+            logging.debug("URL fetch failed for %s (attempt %d/%d): %s", url, attempt + 1, MAX_RETRIES, e)
             if attempt < MAX_RETRIES - 1:
                 import time
                 time.sleep(RETRY_DELAY_SECONDS)
