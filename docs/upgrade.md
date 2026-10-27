@@ -1,4 +1,0 @@
-# trace-osint Upgrade
-
-## Steps
-

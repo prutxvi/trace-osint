@@ -1,4 +1,0 @@
-# trace-osint Logging
-
-## Configuration
-
